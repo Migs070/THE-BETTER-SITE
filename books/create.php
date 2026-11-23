@@ -1,6 +1,7 @@
 <?php
 require_once '../security.php';
 require_once '../config/database.php';
+require_once '../config/book_images.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../login.php');
@@ -27,43 +28,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $published_year = trim($_POST['published_year'] ?? '');
     $added_by = (int)$_SESSION['user_id'];
 
-    $valid_author_ids = array_map(
+    $validAuthorIds = array_map(
         'intval',
         array_column($authors, 'author_id')
     );
 
     if ($title === '' || $isbn === '') {
-        $error = 'Please enter the title and ISBN.';
+        $error = 'Enter the book title and ISBN.';
     } elseif (!is_numeric($price) || (float)$price < 0) {
-        $error = 'Please enter a valid price.';
+        $error = 'Enter a valid price.';
     } elseif (
         filter_var($published_year, FILTER_VALIDATE_INT) === false ||
         (int)$published_year < 1 ||
         (int)$published_year > 9999
     ) {
-        $error = 'Please enter a valid publication year.';
-    } elseif (!in_array($selected_author_id, $valid_author_ids, true)) {
-        $error = 'Please select an author.';
+        $error = 'Enter a valid publication year.';
+    } elseif (!in_array($selected_author_id, $validAuthorIds, true)) {
+        $error = 'Select an author.';
+    } elseif (
+        !isset($_FILES['image']) ||
+        $_FILES['image']['error'] === UPLOAD_ERR_NO_FILE
+    ) {
+        $error = 'Choose an image for this book.';
     } else {
+        $imagePath = null;
+
         try {
+            $imagePath = save_book_image($_FILES['image']);
+
+            if ($imagePath === null) {
+                throw new RuntimeException('Choose an image for this book.');
+            }
+
             $stmt = $pdo->prepare(
                 'INSERT INTO books
-                    (title, isbn, price, published_year, author_id, added_by)
-                 VALUES (?, ?, ?, ?, ?, ?)'
+                    (title, isbn, price, published_year, author_id, added_by, image_path)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)'
             );
+
             $stmt->execute([
                 $title,
                 $isbn,
                 (float)$price,
                 (int)$published_year,
                 $selected_author_id,
-                $added_by
+                $added_by,
+                $imagePath
             ]);
 
             header('Location: index.php');
             exit;
+        } catch (RuntimeException $e) {
+            $error = $e->getMessage();
         } catch (PDOException $e) {
-            $error = 'Could not save the book. The ISBN may already exist.';
+            $error = 'Could not save the book. The ISBN may already be in use.';
+
+            if ($imagePath !== null) {
+                $savedFile = dirname(__DIR__) . '/' . $imagePath;
+                if (is_file($savedFile)) {
+                    unlink($savedFile);
+                }
+            }
         }
     }
 }
@@ -78,11 +103,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           rel="stylesheet">
 </head>
 <body class="bg-light">
-<div class="container py-5" style="max-width: 500px;">
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-primary text-white fw-bold">
-            Add New Book
-        </div>
+<div class="container py-5" style="max-width: 550px;">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white fw-bold">Add Book</div>
         <div class="card-body p-4">
             <?php if ($error !== ''): ?>
                 <div class="alert alert-danger"><?= escape_xss($error) ?></div>
@@ -94,18 +117,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a href="../author/create.php">Add Author</a>
                 </div>
             <?php else: ?>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="author_id" class="form-label">Author</label>
-                        <select id="author_id"
-                                name="author_id"
-                                class="form-select"
-                                required>
+                        <select id="author_id" name="author_id" class="form-select" required>
                             <option value="">Select an author</option>
-
                             <?php foreach ($authors as $author): ?>
                                 <option value="<?= (int)$author['author_id'] ?>"
-                                    <?= $selected_author_id === (int)$author['author_id'] ? 'selected' : '' ?>>
+                                    <?= $selected_author_id === (int)$author['author_id']
+                                        ? 'selected'
+                                        : '' ?>>
                                     <?= escape_xss($author['name']) ?>
                                 </option>
                             <?php endforeach; ?>
@@ -114,52 +135,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="mb-3">
                         <label for="title" class="form-label">Book Title</label>
-                        <input id="title"
-                               type="text"
-                               name="title"
-                               class="form-control"
-                               maxlength="255"
-                               value="<?= escape_xss($title) ?>"
-                               required>
+                        <input id="title" type="text" name="title"
+                               class="form-control" maxlength="255"
+                               value="<?= escape_xss($title) ?>" required>
                     </div>
 
                     <div class="mb-3">
                         <label for="isbn" class="form-label">ISBN</label>
-                        <input id="isbn"
-                               type="text"
-                               name="isbn"
-                               class="form-control"
-                               maxlength="20"
-                               value="<?= escape_xss($isbn) ?>"
-                               required>
+                        <input id="isbn" type="text" name="isbn"
+                               class="form-control" maxlength="20"
+                               value="<?= escape_xss($isbn) ?>" required>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="price" class="form-label">Price ($)</label>
-                            <input id="price"
-                                   type="number"
-                                   name="price"
-                                   class="form-control"
-                                   min="0"
-                                   step="0.01"
-                                   value="<?= escape_xss($price) ?>"
-                                   required>
+                            <input id="price" type="number" name="price"
+                                   class="form-control" min="0" step="0.01"
+                                   value="<?= escape_xss($price) ?>" required>
                         </div>
 
                         <div class="col-md-6 mb-3">
                             <label for="published_year" class="form-label">
                                 Published Year
                             </label>
-                            <input id="published_year"
-                                   type="number"
-                                   name="published_year"
-                                   class="form-control"
-                                   min="1"
-                                   max="9999"
-                                   value="<?= escape_xss($published_year) ?>"
-                                   required>
+                            <input id="published_year" type="number"
+                                   name="published_year" class="form-control"
+                                   min="1" max="9999"
+                                   value="<?= escape_xss($published_year) ?>" required>
                         </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Book Image</label>
+                        <input id="image" type="file" name="image"
+                               class="form-control"
+                               accept="image/jpeg,image/png,image/gif,image/webp"
+                               required>
+                        <div class="form-text">JPG, PNG, GIF, or WEBP; maximum 5 MB.</div>
                     </div>
 
                     <div class="d-flex justify-content-between">
