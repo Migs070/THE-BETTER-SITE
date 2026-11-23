@@ -13,7 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $age          = (int)($_POST['age'] ?? 0);
     $address      = clean_input($_POST['address'] ?? '');
 
-    // Enforce Minimum 8 Characters + Uppercase + Lowercase + Number
     if (strlen($raw_password) < 8) {$errors[] = "Password must be at least 8 characters long.";
     }
     if (!preg_match('/[A-Z]/', $raw_password)) {$errors[] = "Password must contain at least one uppercase letter (A-Z).";
