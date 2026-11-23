@@ -14,9 +14,9 @@ $email = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $first_name = trim($_POST['first_name'] ?? '');
-    $last_name  = trim($_POST['last_name'] ?? '');
-    $email      = trim($_POST['email'] ?? '');
-    $added_by   = (int)$_SESSION['user_id'];
+    $last_name = trim($_POST['last_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $added_by = (int)$_SESSION['user_id'];
 
     if ($first_name === '' || $last_name === '') {
         $error = 'Please enter the author’s first and last name.';
@@ -25,7 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $stmt = $pdo->prepare(
-                'INSERT INTO authors (first_name, last_name, email, added_by)
+                'INSERT INTO authors
+                    (first_name, last_name, email, added_by)
                  VALUES (?, ?, ?, ?)'
             );
             $stmt->execute([$first_name, $last_name, $email, $added_by]);
@@ -33,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header('Location: index.php');
             exit;
         } catch (PDOException $e) {
-            $error = 'Could not save the author. That email may already be in use.';
+            $error = 'Could not save the author. The email may already exist.';
         }
     }
 }
@@ -48,55 +49,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           rel="stylesheet">
 </head>
 <body class="bg-light">
-    <div class="container py-5" style="max-width: 500px;">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-primary text-white fw-bold">Add New Author</div>
-            <div class="card-body p-4">
-                <?php if ($error !== ''): ?>
-                    <div class="alert alert-danger"><?= escape_xss($error) ?></div>
-                <?php endif; ?>
+<div class="container py-5" style="max-width: 500px;">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white fw-bold">
+            Add New Author
+        </div>
+        <div class="card-body p-4">
+            <?php if ($error !== ''): ?>
+                <div class="alert alert-danger"><?= escape_xss($error) ?></div>
+            <?php endif; ?>
 
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="first_name" class="form-label">First Name</label>
-                        <input id="first_name"
-                               type="text"
-                               name="first_name"
-                               class="form-control"
-                               maxlength="100"
-                               value="<?= escape_xss($first_name) ?>"
-                               required>
-                    </div>
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="first_name" class="form-label">First Name</label>
+                    <input id="first_name"
+                           type="text"
+                           name="first_name"
+                           class="form-control"
+                           maxlength="100"
+                           value="<?= escape_xss($first_name) ?>"
+                           required>
+                </div>
 
-                    <div class="mb-3">
-                        <label for="last_name" class="form-label">Last Name</label>
-                        <input id="last_name"
-                               type="text"
-                               name="last_name"
-                               class="form-control"
-                               maxlength="100"
-                               value="<?= escape_xss($last_name) ?>"
-                               required>
-                    </div>
+                <div class="mb-3">
+                    <label for="last_name" class="form-label">Last Name</label>
+                    <input id="last_name"
+                           type="text"
+                           name="last_name"
+                           class="form-control"
+                           maxlength="100"
+                           value="<?= escape_xss($last_name) ?>"
+                           required>
+                </div>
 
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input id="email"
-                               type="email"
-                               name="email"
-                               class="form-control"
-                               maxlength="255"
-                               value="<?= escape_xss($email) ?>"
-                               required>
-                    </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input id="email"
+                           type="email"
+                           name="email"
+                           class="form-control"
+                           maxlength="255"
+                           value="<?= escape_xss($email) ?>"
+                           required>
+                </div>
 
-                    <div class="d-flex justify-content-between">
-                        <a href="index.php" class="btn btn-outline-secondary">Cancel</a>
-                        <button type="submit" class="btn btn-success">Save Author</button>
-                    </div>
-                </form>
-            </div>
+                <div class="d-flex justify-content-between">
+                    <a href="index.php" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-success">Save Author</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 </body>
 </html>
