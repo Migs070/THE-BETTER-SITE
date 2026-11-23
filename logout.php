@@ -1,5 +1,5 @@
 <?php
-require_once 'security.php';
+require_once __DIR__ . '/security.php';
 
 $_SESSION = [];
 
@@ -18,7 +18,5 @@ if (ini_get('session.use_cookies')) {
 }
 
 session_destroy();
-
 header('Location: login.php');
 exit;
-?>
