@@ -12,4 +12,3 @@ function escape_xss($value): string
 {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
-?>
