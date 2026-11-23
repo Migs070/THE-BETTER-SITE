@@ -1,0 +1,77 @@
+CREATE DATABASE IF NOT EXISTS publishing_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE publishing_db;
+
+CREATE TABLE users (
+    user_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    age INT UNSIGNED NOT NULL DEFAULT 0,
+    address TEXT NULL,
+    date_added TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id),
+    UNIQUE KEY uq_users_username (username),
+    UNIQUE KEY uq_users_email (email)
+) ENGINE=InnoDB;
+
+CREATE TABLE authors (
+    author_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    date_added TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    added_by INT UNSIGNED NULL,
+    last_updated TIMESTAMP NULL DEFAULT NULL
+        ON UPDATE CURRENT_TIMESTAMP,
+    last_updated_by INT UNSIGNED NULL,
+    PRIMARY KEY (author_id),
+    UNIQUE KEY uq_authors_email (email),
+    KEY idx_authors_name (last_name, first_name),
+    KEY idx_authors_added_by (added_by),
+    KEY idx_authors_updated_by (last_updated_by),
+    CONSTRAINT fk_authors_added_by
+        FOREIGN KEY (added_by) REFERENCES users(user_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_authors_updated_by
+        FOREIGN KEY (last_updated_by) REFERENCES users(user_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE books (
+    book_id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    isbn VARCHAR(20) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    published_year SMALLINT UNSIGNED NOT NULL,
+    author_id INT UNSIGNED NOT NULL,
+    date_added TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    added_by INT UNSIGNED NULL,
+    last_updated TIMESTAMP NULL DEFAULT NULL
+        ON UPDATE CURRENT_TIMESTAMP,
+    last_updated_by INT UNSIGNED NULL,
+    PRIMARY KEY (book_id),
+    UNIQUE KEY uq_books_isbn (isbn),
+    KEY idx_books_author (author_id),
+    KEY idx_books_title (title),
+    KEY idx_books_added_by (added_by),
+    KEY idx_books_updated_by (last_updated_by),
+    CONSTRAINT fk_books_author
+        FOREIGN KEY (author_id) REFERENCES authors(author_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_books_added_by
+        FOREIGN KEY (added_by) REFERENCES users(user_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_books_updated_by
+        FOREIGN KEY (last_updated_by) REFERENCES users(user_id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
